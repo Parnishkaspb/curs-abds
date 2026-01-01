@@ -44,3 +44,20 @@ type Source struct {
 	ID   uint64 `gorm:"primaryKey" json:"id"`
 	Name string `gorm:"type:varchar(30)" json:"name"`
 }
+
+type FraudRule struct {
+	ID          uint64    `gorm:"primaryKey" json:"id"`
+	Code        string    `gorm:"type:varchar(100)" json:"code"`
+	Title       string    `gorm:"type:varchar(255)" json:"title"`
+	Description string    `gorm:"type:varchar(255)" json:"description"`
+	Threshold   uint64    `gorm:"not null;check:threshold >= 0" json:"threshold"`
+	Enable      bool      `gorm:"default:true" json:"enable"`
+	Severity    string    `gorm:"type:varchar(10)" json:"severity"`
+	CreatedAt   time.Time `gorm:"default:now()" json:"created_at"`
+}
+
+type EnableFraudRule struct {
+	Code      string
+	Threshold uint64
+	Severity  string
+}
