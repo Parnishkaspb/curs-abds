@@ -1,28 +1,25 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/Parnishkaspb/curs-abds/internal/kafka"
 	"github.com/Parnishkaspb/curs-abds/internal/service"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
-	"github.com/segmentio/kafka-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
-	"time"
 )
 
-type TransactionRequest struct {
-	TransactionID string    `json:"transaction_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	AccountID     uint64    `json:"account_id"`
-	Amount        uint64    `json:"amount"`
-	Country       string    `json:"country"`
-	Merchant      string    `json:"merchant"`
-}
+//type TransactionRequest struct {
+//	TransactionID string    `json:"transaction_id"`
+//	CreatedAt     time.Time `json:"created_at"`
+//	AccountID     uint64    `json:"account_id"`
+//	Amount        uint64    `json:"amount"`
+//	Country       string    `json:"country"`
+//	Merchant      string    `json:"merchant"`
+//}
 
 var db *gorm.DB
 
@@ -55,7 +52,7 @@ func initDB() {
 }
 
 func createTransaction(c echo.Context) error {
-	var req TransactionRequest
+	var req kafka.TransactionRequest
 
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Ошибка: %s", err.Error())
@@ -114,20 +111,6 @@ func main() {
 	//
 	//e.POST("/transactions", createTransaction)
 
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "transactions",
-		//GroupID: "transaction-consumer-group",
-		StartOffset: kafka.FirstOffset,
-	})
-	defer reader.Close()
-
-	msg, err := reader.ReadMessage(context.Background())
-	if err != nil {
-		log.Fatal("Ошибка при получении:", err)
-	}
-
-	fmt.Println(string(msg.Value))
 	//rdb := redis.NewClient(&redis.Options{
 	//	Addr:     "localhost:6379",
 	//	Password: "", // no password

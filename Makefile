@@ -25,11 +25,17 @@ start_docker:
 topic:
 	docker exec -it kafka kafka-topics --create --topic transactions --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
 
+
+.PHONY: read_kafka_consumer
+# Прочитать сообщения
+read_kafka_consumer:
+	docker exec -it kafka kafka-console-consumer --topic transactions --from-beginning --bootstrap-server localhost:9092 --max-messages $(or $(MESSAGES),100)
+
+
+
+
 # Проверить список топиков
 #docker exec -it kafka kafka-topics --list --bootstrap-server localhost:9092
 
 # Отправить тестовое сообщение
 #docker exec -it kafka bash -c "echo 'test message' | kafka-console-producer --topic transactions --bootstrap-server localhost:9092"
-
-# Прочитать сообщения
-#docker exec -it kafka kafka-console-consumer --topic transactions --from-beginning --bootstrap-server localhost:9092 --max-messages 1
