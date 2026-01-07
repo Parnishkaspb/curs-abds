@@ -31,8 +31,13 @@ topic:
 read_kafka_consumer:
 	docker exec -it kafka kafka-console-consumer --topic transactions --from-beginning --bootstrap-server localhost:9092 --max-messages $(or $(MESSAGES),100)
 
+.PHONY: start_producer
+start_producer:
+	go run cmd/kafka/producer.go
 
-
+.PHONY: start_consumer
+start_consumer:
+	go run cmd/kafka/consumer.go
 
 # Проверить список топиков
 #docker exec -it kafka kafka-topics --list --bootstrap-server localhost:9092

@@ -19,8 +19,21 @@ type TransactionRequest struct {
 	Merchant      string    `json:"merchant"`
 }
 
+type Writer interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+	Close() error
+}
+
+//type Producer struct {
+//	writer *kafka.Writer
+//}
+
 type Producer struct {
-	writer *kafka.Writer
+	writer Writer
+}
+
+func NewProducerWithWriter(w Writer) *Producer {
+	return &Producer{writer: w}
 }
 
 // New создает нового продюсера
@@ -116,4 +129,23 @@ func (p *Producer) Close() error {
 		return p.writer.Close()
 	}
 	return nil
+}
+
+func (p *Producer) Start(ctx context.Context, repeats int) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("producer stopped")
+			return
+		case <-ticker.C:
+			if err := p.SendMessages(repeats); err != nil {
+				fmt.Printf("failed to send messages: %v\n", err)
+			} else {
+				fmt.Println("messages sent")
+			}
+		}
+	}
 }
