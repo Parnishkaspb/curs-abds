@@ -19,3 +19,4 @@ CREATE TABLE fraud_alerts (
 -- +goose StatementBegin
 DROP TABLE fraud_alerts;
 -- +goose StatementEnd
+

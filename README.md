@@ -59,7 +59,6 @@ make start_consumer
 Схема базы данных ClickHouse:
 ![img_4.png](img_4.png)
 
-
 ### Описание API
 
 Описание API можно найти в файле: docs/openapi.yaml (Кмк, Golang умеет открывать такие файлы)

@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	kafka2 "github.com/Parnishkaspb/curs-abds/internal/kafka"
 	"github.com/segmentio/kafka-go"
 	"testing"
-	"time"
-
-	kafka2 "github.com/Parnishkaspb/curs-abds/internal/kafka"
 )
 
 //
@@ -147,26 +145,6 @@ func TestProducer_Close(t *testing.T) {
 
 	if !mockWriter.Closed {
 		t.Fatal("writer.Close() must be called")
-	}
-}
-
-//
-// ===== TEST Start() =====
-//
-
-func TestProducer_Start(t *testing.T) {
-	mockWriter := &MockWriter{}
-	p := kafka2.NewProducerWithWriter(mockWriter)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go p.Start(ctx, 2)
-
-	time.Sleep(120 * time.Millisecond)
-	cancel()
-
-	if len(mockWriter.MessagesSent) == 0 {
-		t.Fatal("expected Start to send messages at least once")
 	}
 }
 

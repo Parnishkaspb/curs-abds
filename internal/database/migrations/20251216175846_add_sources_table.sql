@@ -14,3 +14,4 @@ INSERT INTO sources (name) VALUES
 -- +goose StatementBegin
 DROP TABLE sources;
 -- +goose StatementEnd
+

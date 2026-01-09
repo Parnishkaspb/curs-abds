@@ -32,3 +32,4 @@ INSERT INTO fraud_rules (code, title, description, threshold, enable, severity) 
 DROP TABLE fraud_rules;
 
 -- +goose StatementEnd
+

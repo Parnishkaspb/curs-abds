@@ -1,16 +1,12 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"github.com/Parnishkaspb/curs-abds/internal/kafka"
 	"github.com/Parnishkaspb/curs-abds/internal/service/models"
 	"github.com/jackc/pgx/v5/pgtype"
-)
-
-import (
-	"context"
-	"errors"
-
-	"github.com/Parnishkaspb/curs-abds/internal/kafka"
 )
 
 func (s *DBService) CreateTransactionFromRequest(ctx context.Context, req kafka.TransactionRequest, source, status uint64) (uint64, error) {

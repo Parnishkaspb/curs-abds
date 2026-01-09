@@ -42,10 +42,6 @@ func (m *MockReader) Close() error {
 	return nil
 }
 
-//
-// ===== MOCK PROCESSOR =====
-//
-
 type MockProcessor struct {
 	Calls int
 	Last  []byte
@@ -140,10 +136,6 @@ func TestConsumer_Close(t *testing.T) {
 		t.Fatalf("reader.Close() should be called")
 	}
 }
-
-//
-// ===== TABLE TESTS =====
-//
 
 func TestConsumer_Table(t *testing.T) {
 	tests := []struct {

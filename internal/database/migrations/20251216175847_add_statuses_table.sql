@@ -14,3 +14,4 @@ INSERT INTO statuses (name) VALUES
 -- +goose StatementBegin
 DROP TABLE statuses;
 -- +goose StatementEnd
+

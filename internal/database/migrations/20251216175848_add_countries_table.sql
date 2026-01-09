@@ -17,3 +17,4 @@ INSERT INTO countries (name) VALUES
 -- +goose StatementBegin
 DROP TABLE countries;
 -- +goose StatementEnd
+

@@ -1,8 +1,6 @@
 package clickhouse
 
-import (
-	"github.com/Parnishkaspb/curs-abds/internal/kafka"
-)
+import "github.com/Parnishkaspb/curs-abds/internal/kafka"
 
 type ClickHouseRepo interface {
 	AddAcceptedTransaction(req kafka.TransactionRequest) error
