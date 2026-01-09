@@ -56,8 +56,8 @@ type FraudRule struct {
 	CreatedAt   time.Time `gorm:"default:now()" json:"created_at"`
 }
 
-type EnableFraudRule struct {
+type EnableFraudRule[T uint64 | []string] struct {
 	Code      string
-	Threshold uint64
+	Threshold T
 	Severity  string
 }

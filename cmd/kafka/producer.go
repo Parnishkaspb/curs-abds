@@ -12,7 +12,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go producer.Start(ctx, 10)
+	go producer.Start(ctx, 100)
 
 	select {}
 }

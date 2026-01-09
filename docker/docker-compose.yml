@@ -1,6 +1,10 @@
-version: '3.8'
+version: "3.8"
 
 services:
+
+  # =====================
+  # ZOOKEEPER + KAFKA
+  # =====================
   zookeeper:
     image: confluentinc/cp-zookeeper:6.2.0
     container_name: zookeeper
@@ -9,8 +13,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-    networks:
-      - app-network
 
   kafka:
     image: confluentinc/cp-kafka:6.2.0
@@ -23,75 +25,124 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-    networks:
-      - app-network
-
-  postgres:
-    image: postgres:15
-    container_name: postgres_db
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: abds
+  kafka-exporter:
+    image: danielqsj/kafka-exporter
+    container_name: kafka-exporter
+    command:
+      - "--kafka.server=kafka:9092"
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
+      - "9308:9308"
+    depends_on:
+      - kafka
 
-  redis:
-    image: redis:alpine
-    container_name: my-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
+  # =====================
+  # REDIS (3 NODES)
+  # =====================
+  redis-1:
+    image: redis:7-alpine
+    container_name: redis-1
     command: redis-server --appendonly yes
-    networks:
-      - app-network
+
+  redis-2:
+    image: redis:7-alpine
+    container_name: redis-2
+    command: redis-server --replicaof redis-1 6379
+    depends_on:
+      - redis-1
+
+  redis-3:
+    image: redis:7-alpine
+    container_name: redis-3
+    command: redis-server --replicaof redis-1 6379
+    depends_on:
+      - redis-1
+
+  redis-exporter:
+    image: oliver006/redis_exporter
+    container_name: redis-exporter
+    environment:
+      REDIS_ADDR: redis-1:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis-1
 
   redisinsight:
     image: redis/redisinsight:latest
     container_name: redisinsight
     ports:
       - "5540:5540"
-    volumes:
-      - redisinsight_data:/data
     depends_on:
-      - redis
-    networks:
-      - app-network
+      - redis-1
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:25.8
-    container_name: clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
+  # =====================
+  # POSTGRESQL
+  # =====================
+  postgres:
+    image: postgres:15.6
+    container_name: postgres
     environment:
-      CLICKHOUSE_USER: user
-      CLICKHOUSE_PASSWORD: ""                       # пустой пароль
-      CLICKHOUSE_DB: abds                           # правильно!
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: abds
+    ports:
+      - "5432:5432"
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://user:password@postgres:5432/abds?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  # =====================
+  # CLICKHOUSE (3 NODES)
+  # =====================
+  clickhouse-1:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-1
+    hostname: clickhouse-1
+
+  clickhouse-2:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-2
+    hostname: clickhouse-2
+
+  clickhouse-3:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-3
+    hostname: clickhouse-3
+
+  # =====================
+  # MONITORING
+  # =====================
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
-    networks:
-      - app-network
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
-volumes:
-  postgres_data:
-  redis-data:
-  redisinsight_data:
-  clickhouse_data:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
 
-networks:
-  app-network:
-    driver: bridge
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"

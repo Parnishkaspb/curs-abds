@@ -24,10 +24,6 @@ type Writer interface {
 	Close() error
 }
 
-//type Producer struct {
-//	writer *kafka.Writer
-//}
-
 type Producer struct {
 	writer Writer
 }
@@ -97,7 +93,7 @@ func (p *Producer) CreateMessage() TransactionRequest {
 	return TransactionRequest{
 		TransactionID: p.GenerateTransactionID(),
 		CreatedAt:     time.Now(),
-		AccountID:     rand.Uint64() % 10,
+		AccountID:     rand.Uint64() % 50,
 		Amount:        rand.Uint64() % 1000000,
 		Country:       p.GenerateCountryForTransactionRequest(),
 		Merchant:      p.GenerateMerchantForTransactionRequest(),

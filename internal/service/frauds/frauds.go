@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"sync"
 	"time"
 
@@ -53,6 +54,10 @@ func NewFrauds(
 		{
 			Code: "geo_jump",
 			Func: f.checkGeoJump,
+		},
+		{
+			Code: "blacklist",
+			Func: f.blacklist,
 		},
 	}
 
@@ -121,7 +126,7 @@ func (f *Frauds) CheckMessage(message string) {
 
 // RULE 1: HIGH_AMOUNT
 func (f *Frauds) checkHighAmount(ctx context.Context, req kafka.TransactionRequest) FraudResult {
-	rule := service.EnableFraudRule{
+	rule := service.EnableFraudRule[uint64]{
 		Code:      "high_amount",
 		Threshold: 500000,
 		Severity:  "HIGH",
@@ -144,7 +149,7 @@ func (f *Frauds) checkHighAmount(ctx context.Context, req kafka.TransactionReque
 
 // RULE 2: GEO_JUMP
 func (f *Frauds) checkGeoJump(ctx context.Context, req kafka.TransactionRequest) FraudResult {
-	rule := service.EnableFraudRule{
+	rule := service.EnableFraudRule[uint64]{
 		Code:      "geo_jump",
 		Threshold: 60,
 		Severity:  "LOW",
@@ -177,6 +182,28 @@ func (f *Frauds) checkGeoJump(ctx context.Context, req kafka.TransactionRequest)
 	}
 
 	return FraudResult{Decline: false}
+}
+
+func (f *Frauds) blacklist(ctx context.Context, req kafka.TransactionRequest) FraudResult {
+	rule := service.EnableFraudRule[[]string]{
+		Code:      "blacklist",
+		Threshold: []string{"YMARKET", "CAMOKAT"},
+		Severity:  "HIGH",
+	}
+
+	if ok := slices.Contains(rule.Threshold, req.Merchant); ok {
+		msg := "[BLACK_LIST] Черный список merchant! Merchant: %s. Severity=%s"
+		logLine := sprintf(msg, req.Merchant, rule.Severity)
+		return FraudResult{
+			Decline: true,
+			Reason:  "blacklist",
+			Log:     logLine,
+		}
+	}
+
+	return FraudResult{
+		Decline: false,
+	}
 }
 
 //
