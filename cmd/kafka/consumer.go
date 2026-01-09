@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	clickhouserepo "github.com/Parnishkaspb/curs-abds/internal/database/clickhouse"
+	"github.com/Parnishkaspb/curs-abds/internal/database/db"
 	redisrepo "github.com/Parnishkaspb/curs-abds/internal/database/redis"
 	"github.com/Parnishkaspb/curs-abds/internal/kafka"
+	service2 "github.com/Parnishkaspb/curs-abds/internal/service"
 	"github.com/Parnishkaspb/curs-abds/internal/service/clickhouse"
 	"github.com/Parnishkaspb/curs-abds/internal/service/frauds"
 	service "github.com/Parnishkaspb/curs-abds/internal/service/redis"
@@ -24,7 +26,10 @@ func main() {
 	repoClick := clickhouserepo.NewClickHouse(context.Background())
 	clickService := clickhouse.NewClickService(repoClick)
 
-	fraudProcessor := frauds.NewFrauds(countryService, clickService)
+	repoDB := db.New()
+	DBService := service2.New(repoDB)
+
+	fraudProcessor := frauds.NewFrauds(countryService, clickService, DBService)
 
 	consumer := kafka.NewConsumer(
 		"localhost",

@@ -18,8 +18,8 @@ func NewClickHouse(context context.Context) *ClickHouseRepo {
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{"localhost:9000"},
 		Auth: clickhouse.Auth{
-			Database: "abds",
-			Username: "user",
+			Database: "default",
+			Username: "default",
 			Password: "",
 		},
 		Debugf: func(format string, v ...interface{}) {

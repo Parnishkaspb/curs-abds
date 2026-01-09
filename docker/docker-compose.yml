@@ -1,4 +1,13 @@
 version: "3.8"
+x-environment: &environment
+  CLICKHOUSE_USER: default
+  CLICKHOUSE_PASSWORD: ""
+  CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+  CLICKHOUSE_CONFIG_max_memory_usage: 30000000000
+  CLICKHOUSE_CONFIG_max_partitions_per_insert_block: 100
+  CLICKHOUSE_CONFIG_max_concurrent_queries: 20
+  CLICKHOUSE_CONFIG_max_threads: 4
+  CLICKHOUSE_REPLICATION: "1"
 
 services:
 
@@ -107,22 +116,20 @@ services:
       - postgres
 
   # =====================
-  # CLICKHOUSE (3 NODES)
+  # CLICKHOUSE
   # =====================
-  clickhouse-1:
+  clickhouse:
     image: clickhouse/clickhouse-server:25.8
-    container_name: clickhouse-1
-    hostname: clickhouse-1
-
-  clickhouse-2:
-    image: clickhouse/clickhouse-server:25.8
-    container_name: clickhouse-2
-    hostname: clickhouse-2
-
-  clickhouse-3:
-    image: clickhouse/clickhouse-server:25.8
-    container_name: clickhouse-3
-    hostname: clickhouse-3
+    container_name: ch1
+    ports:
+      - "8123:8123" # Веб-интерфейс
+      - "9000:9000"
+    volumes:
+      - ./ch1_volume:/var/lib/ch1
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
 
   # =====================
   # MONITORING
@@ -140,9 +147,93 @@ services:
     container_name: grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
 
   node-exporter:
     image: prom/node-exporter
     container_name: node-exporter
     ports:
       - "9100:9100"
+
+  # =====================
+  # AIRFLOW
+  # =====================
+  airflow-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow-init
+    user: root
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://user:password@postgres/abds
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__FERNET_KEY: "THIS_IS_A_DEMO_FERNET_KEY_32BYTES!"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "THIS_IS_A_DEMO_SECRET_KEY"
+    volumes:
+      - ./airflow:/opt/airflow
+    command: >
+      bash -c "
+      mkdir -p /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins &&
+      chown -R 50000:0 /opt/airflow &&
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
+    depends_on:
+      - postgres
+    restart: "no"
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow-webserver
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    user: "50000:0"
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://user:password@postgres/abds
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__FERNET_KEY: "THIS_IS_A_DEMO_FERNET_KEY_32BYTES!"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "THIS_IS_A_DEMO_SECRET_KEY"
+    volumes:
+      - ./airflow:/opt/airflow
+    command: webserver
+    restart: unless-stopped
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow-scheduler
+    depends_on:
+      airflow-webserver:
+        condition: service_started
+    user: "50000:0"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://user:password@postgres/abds
+      AIRFLOW__CORE__FERNET_KEY: "THIS_IS_A_DEMO_FERNET_KEY_32BYTES!"
+    volumes:
+      - ./airflow:/opt/airflow
+    command: scheduler
+    restart: unless-stopped
+
+  superset:
+    build: ./build/superset
+    container_name: superset
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: "9dfc3c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f"
+    volumes:
+      - superset_volume:/app/superset_home
+    restart: unless-stopped
+
+volumes:
+  superset_volume:
