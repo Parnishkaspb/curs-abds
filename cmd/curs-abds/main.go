@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	database "github.com/Parnishkaspb/curs-abds/internal/database/db"
 	"github.com/Parnishkaspb/curs-abds/internal/kafka"
 	"github.com/Parnishkaspb/curs-abds/internal/service"
+	"github.com/Parnishkaspb/curs-abds/internal/service/models"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"net/http"
 )
@@ -21,13 +23,13 @@ import (
 //	Merchant      string    `json:"merchant"`
 //}
 
-var db *gorm.DB
+//var db *gorm.DB
 
-var Countries = map[string]int{
-	"RU":  1,
-	"BY":  2,
-	"USA": 3,
-}
+//var Countries = map[string]int{
+//	"RU":  1,
+//	"BY":  2,
+//	"USA": 3,
+//}
 
 var Currencies = map[string]uint64{
 	"RU":  1,
@@ -35,23 +37,13 @@ var Currencies = map[string]uint64{
 	"USA": 3,
 }
 
-var transactions []service.Transaction
-
-func initDB() {
-	dsn := "host=localhost user=user password=password dbname=abds port=5432 sslmode=disable"
-	var err error
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("невозможно подключение к базе данных. Ошибка: %s", err)
-	}
-
-	if err := db.AutoMigrate(); err != nil {
-		log.Fatalf("Ошибка при создании миграции. Ошибка: %s", err)
-	}
-}
+var transactions []models.Transaction
 
 func createTransaction(c echo.Context) error {
+	ctx := context.Background()
+	repo := database.New()
+	svc := service.New(repo)
+
 	var req kafka.TransactionRequest
 
 	if err := c.Bind(&req); err != nil {
@@ -59,14 +51,25 @@ func createTransaction(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Неверный запрос"})
 	}
 
-	idCountry, exists := Countries[req.Country]
-	if !exists {
-		log.Printf("Страна не найдена: %s. Автоматическое добавление!", req.Country)
-		idCountry = maxID() + 1
-		Countries[req.Country] = idCountry
+	countries, err := svc.GetCountries(ctx)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	idCurrency, exists := Currencies[req.Country]
+	idCountry, exists := countries[req.Country]
+	if !exists {
+		log.Printf("Страна не найдена: %s. Автоматическое добавление!", req.Country)
+		idCountry, _ = svc.SetCountry(ctx, req.Country)
+	}
+
+	log.Println(countries)
+
+	currencies, err := svc.GetCurrencies(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	idCurrency, exists := currencies[req.Country]
 	if !exists {
 		log.Fatalf("Валюта не найдена: %s. Автоматическое добавление невозможно!", req.Country)
 	}
@@ -76,30 +79,35 @@ func createTransaction(c echo.Context) error {
 		log.Fatalf("Ошибка при конвертации данных!")
 	}
 
-	newTransaction := service.Transaction{
-		ID:            maxIDTransaction() + 1,
+	newTransaction := models.Transaction{
+		//ID:            maxIDTransaction() + 1,
 		TransactionID: pgtype.UUID{},
 		AccountID:     req.AccountID,
 		Amount:        req.Amount,
 		CurrencyID:    idCurrency,
 		Merchant:      req.Merchant,
-		CountryID:     uint64(idCountry),
+		CountryID:     idCountry,
 		StatusID:      1,
 		Payload:       string(payloadJSON),
 		SourceID:      1,
 		CreatedAt:     req.CreatedAt,
 	}
 
-	transactions = append(transactions, newTransaction)
+	_, err = svc.SetTransaction(ctx, newTransaction)
+	if err != nil {
+		return c.JSON(http.StatusOK, map[string]string{"error": err.Error()})
+
+	}
+	//transactions = append(transactions, newTransaction)
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Успешное добавление транзакции"})
 
 }
 
 func main() {
-	//e := echo.New()
-	//e.Use(middleware.Logger())
-	////e.Use(fraudsMiddleware())
+	e := echo.New()
+	e.Use(middleware.Logger())
+	//e.Use(fraudsMiddleware())
 	//
 	//e.GET("/", func(c echo.Context) error {
 	//	return c.String(http.StatusOK, "Hello, World!")
@@ -109,7 +117,7 @@ func main() {
 	////	return c.String(http.StatusOK, "Hello, World!")
 	////})
 	//
-	//e.POST("/transactions", createTransaction)
+	e.POST("/transactions", createTransaction)
 
 	//rdb := redis.NewClient(&redis.Options{
 	//	Addr:     "localhost:6379",
@@ -130,42 +138,42 @@ func main() {
 	//
 	//fmt.Println(res1)
 
-	//e.Start("localhost:8080")
+	e.Start("localhost:8080")
 }
 
-func maxID() int {
-	maxId := 0
-	for _, id := range Countries {
-		if id > maxId {
-			maxId = id
-		}
-	}
-
-	return maxId
-}
+//func maxID() int {
+//	maxId := 0
+//	for _, id := range Countries {
+//		if id > maxId {
+//			maxId = id
+//		}
+//	}
+//
+//	return maxId
+//}
 
 func maxIDTransaction() uint64 {
-	var transactionsMap []service.Transaction
+	var transactionsMap []models.Transaction
 	if len(transactionsMap) == 0 {
 		return 0
 	}
 	return transactionsMap[len(transactionsMap)-1].ID
 }
 
-var ip = make(map[string]uint)
+//var ip = make(map[string]uint)
 
-var frauds = []service.EnableFraudRule{
-	{
-		Code:      "high_amount",
-		Threshold: 10000,
-		Severity:  "HIGH",
-	},
-	{
-		Code:      "geo_jump",
-		Threshold: 60,
-		Severity:  "LOW",
-	},
-}
+//var frauds = []service.EnableFraudRule[]{
+//	{
+//		Code:      "high_amount",
+//		Threshold: 10000,
+//		Severity:  "HIGH",
+//	},
+//	{
+//		Code:      "geo_jump",
+//		Threshold: 60,
+//		Severity:  "LOW",
+//	},
+//}
 
 //func fraudsMiddleware() echo.MiddlewareFunc {
 //	return func(next echo.HandlerFunc) echo.HandlerFunc {

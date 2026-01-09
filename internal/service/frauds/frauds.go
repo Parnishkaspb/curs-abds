@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Parnishkaspb/curs-abds/internal/service/models"
 	"log"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/Parnishkaspb/curs-abds/internal/kafka"
-	"github.com/Parnishkaspb/curs-abds/internal/service"
 	"github.com/Parnishkaspb/curs-abds/internal/service/clickhouse"
 	service2 "github.com/Parnishkaspb/curs-abds/internal/service/redis"
 )
@@ -126,7 +126,7 @@ func (f *Frauds) CheckMessage(message string) {
 
 // RULE 1: HIGH_AMOUNT
 func (f *Frauds) checkHighAmount(ctx context.Context, req kafka.TransactionRequest) FraudResult {
-	rule := service.EnableFraudRule[uint64]{
+	rule := models.EnableFraudRule[uint64]{
 		Code:      "high_amount",
 		Threshold: 500000,
 		Severity:  "HIGH",
@@ -149,7 +149,7 @@ func (f *Frauds) checkHighAmount(ctx context.Context, req kafka.TransactionReque
 
 // RULE 2: GEO_JUMP
 func (f *Frauds) checkGeoJump(ctx context.Context, req kafka.TransactionRequest) FraudResult {
-	rule := service.EnableFraudRule[uint64]{
+	rule := models.EnableFraudRule[uint64]{
 		Code:      "geo_jump",
 		Threshold: 60,
 		Severity:  "LOW",
@@ -184,8 +184,9 @@ func (f *Frauds) checkGeoJump(ctx context.Context, req kafka.TransactionRequest)
 	return FraudResult{Decline: false}
 }
 
+// RULE 3: BlackList
 func (f *Frauds) blacklist(ctx context.Context, req kafka.TransactionRequest) FraudResult {
-	rule := service.EnableFraudRule[[]string]{
+	rule := models.EnableFraudRule[[]string]{
 		Code:      "blacklist",
 		Threshold: []string{"YMARKET", "CAMOKAT"},
 		Severity:  "HIGH",
