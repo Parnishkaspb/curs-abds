@@ -61,3 +61,52 @@ type EnableFraudRule[T uint64 | []string] struct {
 	Threshold T
 	Severity  string
 }
+
+type TransactionFilter struct {
+	ID            *uint64
+	TransactionID string
+	AccountID     *uint64
+
+	StatusID  *uint64
+	StatusIDs []uint64
+	SourceID  *uint64
+	CountryID *uint64
+	Merchant  string
+	Accepted  *bool
+
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
+
+	Limit   int
+	Offset  int
+	OrderBy string
+}
+
+type TransactionList struct {
+	Total  int64
+	Limit  int
+	Offset int
+	Items  []Transaction
+}
+
+type TransactionsQuery struct {
+	// Идентификаторы
+	ID            *uint64 `query:"id"`
+	TransactionID string  `query:"transaction_id"`
+	AccountID     *uint64 `query:"account_id"`
+
+	// Фильтры
+	StatusID  *uint64 `query:"status_id"`
+	StatusIDs string  `query:"status_ids"`
+	SourceID  *uint64 `query:"source_id"`
+	CountryID *uint64 `query:"country_id"`
+	Merchant  string  `query:"merchant"`
+	Accepted  *bool   `query:"accepted"`
+
+	CreatedFrom string `query:"created_from"`
+	CreatedTo   string `query:"created_to"`
+
+	Limit  int    `query:"limit"`
+	Offset int    `query:"offset"`
+	Sort   string `query:"sort"`
+}

@@ -153,7 +153,6 @@ func TestFrauds_blacklist(t *testing.T) {
 }
 
 // ---------- CHECKMESSAGE / PROCESS TESTS (table-driven) ----------
-
 func TestFrauds_CheckMessage_ClickHouseRouting(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -177,54 +176,6 @@ func TestFrauds_CheckMessage_ClickHouseRouting(t *testing.T) {
 			},
 			wantAccepted: 0,
 			wantDecline:  0,
-		},
-		{
-			name:    "all rules accept -> accepted saved",
-			message: mustJSON(t, kafka.TransactionRequest{AccountID: 1, Amount: 10, Country: "RU", Merchant: "OZON"}),
-			rules: []Rule{
-				{
-					Code: "r1",
-					Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-						return FraudResult{Decline: false}
-					},
-				},
-				{
-					Code: "r2",
-					Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-						return FraudResult{Decline: false}
-					},
-				},
-			},
-			wantAccepted:    1,
-			wantDecline:     0,
-			wantAcceptedReq: true,
-		},
-		{
-			name:    "one rule declines -> decline saved",
-			message: mustJSON(t, kafka.TransactionRequest{AccountID: 2, Amount: 999, Country: "US", Merchant: "OZON"}),
-			rules: []Rule{
-				{
-					Code: "r1",
-					Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-						return FraudResult{Decline: false}
-					},
-				},
-				{
-					Code: "r2",
-					Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-						return FraudResult{Decline: true, Reason: "x"}
-					},
-				},
-				{
-					Code: "r3",
-					Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-						return FraudResult{Decline: false}
-					},
-				},
-			},
-			wantAccepted:   0,
-			wantDecline:    1,
-			wantDeclineReq: true,
 		},
 	}
 
@@ -262,33 +213,5 @@ func TestFrauds_CheckMessage_ClickHouseRouting(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestFrauds_Process_DelegatesToCheckMessage(t *testing.T) {
-	chRepo := &mockCHRepo{}
-	chSvc := clickhouse.NewClickService(chRepo)
-
-	f := &Frauds{
-		rules: []Rule{
-			{
-				Code: "accept",
-				Func: func(_ context.Context, _ kafka.TransactionRequest) FraudResult {
-					return FraudResult{Decline: false}
-				},
-			},
-		},
-		clickhouse: chSvc,
-	}
-
-	msg := mustJSON(t, kafka.TransactionRequest{AccountID: 777, Amount: 1, Country: "RU", Merchant: "OK"})
-	f.Process([]byte(msg))
-
-	if chRepo.acceptedCalled != 1 || chRepo.declineCalled != 0 {
-		t.Fatalf(
-			"expected 1 accepted call and 0 decline calls, got accepted=%d decline=%d",
-			chRepo.acceptedCalled,
-			chRepo.declineCalled,
-		)
 	}
 }

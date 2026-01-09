@@ -59,3 +59,64 @@ func (r *Repo) SetTransaction(ctx context.Context, req models.Transaction) (uint
 
 	return req.ID, nil
 }
+
+func (r *Repo) SearchTransactions(ctx context.Context, f models.TransactionFilter) (models.TransactionList, error) {
+	q := r.db.WithContext(ctx).
+		Model(&models.Transaction{}).
+		Preload("Currency").
+		Preload("Country").
+		Preload("Status").
+		Preload("Source")
+
+	if f.ID != nil {
+		q = q.Where("id = ?", *f.ID)
+	}
+	if f.TransactionID != "" {
+		q = q.Where("transaction_id = ?", f.TransactionID)
+	}
+	if f.AccountID != nil {
+		q = q.Where("account_id = ?", *f.AccountID)
+	}
+	if f.StatusID != nil {
+		q = q.Where("status_id = ?", *f.StatusID)
+	}
+	if len(f.StatusIDs) > 0 {
+		q = q.Where("status_id IN ?", f.StatusIDs)
+	}
+	if f.SourceID != nil {
+		q = q.Where("source_id = ?", *f.SourceID)
+	}
+	if f.CountryID != nil {
+		q = q.Where("country_id = ?", *f.CountryID)
+	}
+	if f.Merchant != "" {
+		q = q.Where("merchant ILIKE ?", "%"+f.Merchant+"%")
+	}
+	if f.CreatedFrom != nil {
+		q = q.Where("created_at >= ?", *f.CreatedFrom)
+	}
+	if f.CreatedTo != nil {
+		q = q.Where("created_at <= ?", *f.CreatedTo)
+	}
+
+	if f.Accepted != nil {
+		q = q.Where("accepted = ?", *f.Accepted)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return models.TransactionList{}, err
+	}
+
+	var items []models.Transaction
+	if err := q.Order(f.OrderBy).Limit(f.Limit).Offset(f.Offset).Find(&items).Error; err != nil {
+		return models.TransactionList{}, err
+	}
+
+	return models.TransactionList{
+		Total:  total,
+		Limit:  f.Limit,
+		Offset: f.Offset,
+		Items:  items,
+	}, nil
+}

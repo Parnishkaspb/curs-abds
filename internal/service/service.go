@@ -13,6 +13,8 @@ type DatabaseRepo interface {
 	SetCountry(ctx context.Context, name string) (uint64, error)
 	GetCurrencies(ctx context.Context) ([]models.Currency, error)
 	SetTransaction(ctx context.Context, req models.Transaction) (uint64, error)
+
+	SearchTransactions(ctx context.Context, f models.TransactionFilter) (models.TransactionList, error)
 }
 
 type DBService struct {
@@ -65,4 +67,22 @@ func (s *DBService) GetCurrencies(ctx context.Context) (map[string]uint64, error
 
 func (s *DBService) SetTransaction(ctx context.Context, req models.Transaction) (uint64, error) {
 	return s.repo.SetTransaction(ctx, req)
+}
+
+func (s *DBService) SearchTransactions(ctx context.Context, f models.TransactionFilter) (models.TransactionList, error) {
+	if f.Limit <= 0 || f.Limit > 500 {
+		f.Limit = 50
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	if f.OrderBy == "" {
+		f.OrderBy = "created_at desc"
+	}
+
+	if f.TransactionID != "" && len(f.TransactionID) < 2 {
+		return models.TransactionList{}, errors.New("transaction_id слишком короткий")
+	}
+
+	return s.repo.SearchTransactions(ctx, f)
 }

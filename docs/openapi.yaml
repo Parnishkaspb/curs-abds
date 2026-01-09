@@ -1,0 +1,405 @@
+openapi: 3.0.3
+info:
+  title: Transactions API
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8080
+
+paths:
+  /transactions:
+    post:
+      summary: Create/Evaluate transaction (fraud decision)
+      description: |
+        Принимает данные транзакции и возвращает решение фрод-системы (ACCEPT/DECLINE),
+        а также id сохранённой записи и логи правила(правил).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+            examples:
+              exampleOzon:
+                summary: Пример транзакции
+                value:
+                  transaction_id: "abc_123"
+                  created_at: "2025-01-01T12:00:00Z"
+                  account_id: 1001
+                  amount: 50000
+                  country: "RU"
+                  merchant: "OZON"
+      responses:
+        "200":
+          description: Fraud decision result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDecisionResponse"
+              examples:
+                accept:
+                  summary: ACCEPT
+                  value:
+                    id: 2706
+                    logs: []
+                    reason: ""
+                    result: "ACCEPT"
+                    source: 2
+                declineHighAmount:
+                  summary: DECLINE (high_amount)
+                  value:
+                    id: 2824
+                    logs:
+                      - "[HIGH_AMOUNT] Сумма(5000000) >= лимита(500000). Severity=HIGH"
+                    reason: "high_amount"
+                    result: "DECLINE"
+                    source: 2
+                declineBlacklist:
+                  summary: DECLINE (blacklist)
+                  value:
+                    id: 2874
+                    logs:
+                      - "[BLACK_LIST] Черный список merchant! Merchant: YMARKET. Severity=HIGH"
+                    reason: "blacklist"
+                    result: "DECLINE"
+                    source: 2
+        "400":
+          description: Bad request (invalid JSON/body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                badRequest:
+                  value:
+                    message: "Неверный запрос"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                serverError:
+                  value:
+                    message: "internal error"
+
+    get:
+      summary: Search transactions (filters + pagination)
+      description: |
+        Возвращает список транзакций по фильтрам: id, transaction_id, account_id,
+        status_id, source_id, country_id, merchant, accepted, интервал времени,
+        а также limit/offset.
+      parameters:
+        - name: id
+          in: query
+          description: Primary key (число)
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 2706
+
+        - name: transaction_id
+          in: query
+          description: UUID/строковый идентификатор транзакции
+          schema:
+            type: string
+          example: "abc-123"
+
+        - name: account_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 1001
+
+        - name: status_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 1
+
+        - name: source_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 2
+
+        - name: country_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 643
+
+        - name: merchant
+          in: query
+          description: Поиск по подстроке merchant (ILIKE %merchant%)
+          schema:
+            type: string
+          example: "OZON"
+
+        - name: accepted
+          in: query
+          description: Фрод правило сработало -> accepted=false
+          schema:
+            type: boolean
+          example: false
+
+        - name: created_from
+          in: query
+          description: Начало интервала created_at (RFC3339)
+          schema:
+            type: string
+            format: date-time
+          example: "2026-01-09T00:00:00Z"
+
+        - name: created_to
+          in: query
+          description: Конец интервала created_at (RFC3339)
+          schema:
+            type: string
+            format: date-time
+          example: "2026-01-10T00:00:00Z"
+
+        - name: limit
+          in: query
+          description: Лимит (если не задан — по умолчанию в коде 50, максимум 500)
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 500
+          example: 50
+
+        - name: offset
+          in: query
+          description: Смещение
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+          example: 0
+
+      responses:
+        "200":
+          description: Transactions list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionsListResponse"
+              examples:
+                ok:
+                  summary: Пример ответа
+                  value:
+                    total: 2
+                    limit: 50
+                    offset: 0
+                    items:
+                      - id: 2706
+                        transaction_id: "5b1f0e8a-2c9c-4a4d-bc3a-9c0c7c15b3d1"
+                        account_id: 1001
+                        amount: 50000
+                        currency_id: 1
+                        merchant: "OZON"
+                        country_id: 643
+                        status_id: 1
+                        source_id: 2
+                        created_at: "2026-01-09T17:54:10Z"
+                        ingested_at: "2026-01-09T17:54:11Z"
+                      - id: 2824
+                        transaction_id: "d1d7c9b6-0a55-4a33-9b16-7f9b0d0f5d3a"
+                        account_id: 2002
+                        amount: 5000000
+                        currency_id: 1
+                        merchant: "YMARKET"
+                        country_id: 643
+                        status_id: 2
+                        source_id: 2
+                        created_at: "2026-01-09T17:55:10Z"
+                        ingested_at: "2026-01-09T17:55:12Z"
+
+        "400":
+          description: Bad request (invalid query params / invalid RFC3339 time)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                badCreatedFrom:
+                  value:
+                    message: "created_from должен быть RFC3339"
+
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    TransactionRequest:
+      type: object
+      required:
+        - transaction_id
+        - created_at
+        - account_id
+        - amount
+        - country
+        - merchant
+      properties:
+        transaction_id:
+          type: string
+          description: Идентификатор транзакции (строка/UUID в вашей системе)
+          example: "abc_123"
+        created_at:
+          type: string
+          format: date-time
+          description: Время создания транзакции (RFC3339)
+          example: "2025-01-01T12:00:00Z"
+        account_id:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 1001
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 50000
+        country:
+          type: string
+          description: Страна (например ISO2)
+          example: "RU"
+        merchant:
+          type: string
+          example: "OZON"
+
+    TransactionDecisionResponse:
+      type: object
+      required:
+        - id
+        - logs
+        - reason
+        - result
+        - source
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID созданной/сохранённой записи в БД
+          example: 2706
+        logs:
+          type: array
+          items:
+            type: string
+          description: Логи/срабатывания правил
+          example: []
+        reason:
+          type: string
+          description: Код причины (если DECLINE), иначе может быть пустой строкой
+          example: "high_amount"
+        result:
+          type: string
+          enum: ["ACCEPT", "DECLINE"]
+          example: "ACCEPT"
+        source:
+          type: integer
+          format: int32
+          description: Источник решения (как в вашем сервисе)
+          example: 2
+
+    TransactionsListResponse:
+      type: object
+      required: [total, limit, offset, items]
+      properties:
+        total:
+          type: integer
+          format: int64
+          example: 120
+        limit:
+          type: integer
+          format: int32
+          example: 50
+        offset:
+          type: integer
+          format: int32
+          example: 0
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+
+    Transaction:
+      type: object
+      required:
+        - id
+        - transaction_id
+        - account_id
+        - amount
+        - currency_id
+        - merchant
+        - country_id
+        - status_id
+        - source_id
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 2706
+        transaction_id:
+          type: string
+          description: UUID транзакции
+          example: "5b1f0e8a-2c9c-4a4d-bc3a-9c0c7c15b3d1"
+        account_id:
+          type: integer
+          format: int64
+          example: 1001
+        amount:
+          type: integer
+          format: int64
+          example: 50000
+        currency_id:
+          type: integer
+          format: int64
+          example: 1
+        merchant:
+          type: string
+          example: "OZON"
+        country_id:
+          type: integer
+          format: int64
+          example: 643
+        status_id:
+          type: integer
+          format: int64
+          example: 1
+        source_id:
+          type: integer
+          format: int64
+          example: 2
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-09T17:54:10Z"
+        ingested_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-09T17:54:11Z"
+
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: "Неверный запрос"

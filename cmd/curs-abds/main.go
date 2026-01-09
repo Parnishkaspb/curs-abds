@@ -37,6 +37,7 @@ func main() {
 	e.Use(middleware.Logger())
 
 	e.POST("/transactions", h.CreateTransaction)
+	e.GET("/transactions", h.GetTransactions)
 
 	e.Start("localhost:8080")
 }
