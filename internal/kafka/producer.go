@@ -32,7 +32,7 @@ func NewProducerWithWriter(w Writer) *Producer {
 	return &Producer{writer: w}
 }
 
-// New создает нового продюсера
+// New создает нового продюсер
 func NewProducer(host, port, topic string) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{

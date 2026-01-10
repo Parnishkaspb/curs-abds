@@ -29,3 +29,4 @@ CREATE INDEX idx_transactions_ingested_at ON transactions(ingested_at);
 -- +goose StatementBegin
 DROP TABLE transactions;
 -- +goose StatementEnd
+

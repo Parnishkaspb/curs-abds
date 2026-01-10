@@ -18,3 +18,4 @@ INSERT INTO currencies (name, iso) VALUES
 -- +goose StatementBegin
 DROP TABLE currencies;
 -- +goose StatementEnd
+

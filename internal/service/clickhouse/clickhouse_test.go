@@ -8,7 +8,6 @@ import (
 )
 
 // ===== Mock =====
-
 type mockClickHouseRepo struct {
 	addAcceptedCalled bool
 	addDeclineCalled  bool

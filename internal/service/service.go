@@ -3,9 +3,8 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
-
 	"github.com/Parnishkaspb/curs-abds/internal/service/models"
+	"strings"
 )
 
 type DatabaseRepo interface {

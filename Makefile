@@ -6,7 +6,6 @@ mockdata:
 	@echo "Генерация тестовых закончена"
 
 .PHONY: help
-
 help:
 	@echo "Скопируйте команды ниже, чтобы настроить goose"
 	@echo "  export GOOSE_DRIVER=postgres"

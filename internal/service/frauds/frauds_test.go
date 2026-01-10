@@ -32,16 +32,6 @@ func (m *mockCHRepo) AddDeclineTransaction(req kafka.TransactionRequest) error {
 	return m.declineErr
 }
 
-// helper to marshal request
-func mustJSON(t *testing.T, v any) string {
-	t.Helper()
-	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
-	}
-	return string(b)
-}
-
 func TestFrauds_checkHighAmount(t *testing.T) {
 	f := &Frauds{}
 

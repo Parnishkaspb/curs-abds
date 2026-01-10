@@ -1,14 +1,13 @@
 package handle
 
 import (
-	"github.com/Parnishkaspb/curs-abds/internal/service/models"
-	"net/http"
-	"time"
-
 	"github.com/Parnishkaspb/curs-abds/internal/kafka"
 	"github.com/Parnishkaspb/curs-abds/internal/service"
 	"github.com/Parnishkaspb/curs-abds/internal/service/frauds"
+	"github.com/Parnishkaspb/curs-abds/internal/service/models"
 	"github.com/labstack/echo/v4"
+	"net/http"
+	"time"
 )
 
 type Handler struct {
